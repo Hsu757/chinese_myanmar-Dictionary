@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/app_drawer.dart';
@@ -7,6 +6,8 @@ import 'word_detail_screen.dart';
 import '../main.dart';
 import '../database.dart';
 import '../database_helper.dart';
+import '../category_data.dart';
+import '../category_screens.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,14 +23,10 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Word> searchResult = [];
   List<Word> historyWords = [];
   List<Word> favoriteWords = [];
-  Word? chineseOfTheDay;
 
   bool isLoading = false;
   Timer? _debounce;
   int _searchId = 0;
-
-  bool _showAllHistory = false;
-  bool _showAllFavorites = false;
 
   @override
   void initState() {
@@ -54,39 +51,38 @@ class _HomeScreenState extends State<HomeScreen> {
     final history = await DatabaseHelper.instance.getHistory();
     final favorites = await DatabaseHelper.instance.getFavorites();
 
-    Word? randomFav;
-    if (favorites.isNotEmpty) {
-      final random = Random();
-      randomFav = favorites[random.nextInt(favorites.length)];
-    }
-
     if (!mounted) return;
     setState(() {
-      historyWords = history; 
+      historyWords = history;
       favoriteWords = favorites;
-      chineseOfTheDay = randomFav;
     });
   }
 
-  // မြန်မာစာအပါအဝင် စာသားများ တိကျစွာ ရှာဖွေနိုင်ရေး Clean ပြုလုပ်ပြီး ရှာဖွေသည့် Function
   Future<void> searchWord(String keyword) async {
     final currentSearch = ++_searchId;
-
-    // မြန်မာ Keyboard များမှ ပါလာတတ်သော Invisible Characters (\u200B, \uFEFF) နှင့် အပို Space များ သန့်စင်ခြင်း
-    final cleanKeyword = keyword
-        .replaceAll(RegExp(r'[\u200B\uFEFF]'), '')
-        .trim();
-
-    if (cleanKeyword.isEmpty) {
+    if (keyword.isEmpty) {
       if (!mounted) return;
-      setState(() { searchResult = []; isLoading = false; });
+      setState(() {
+        searchResult = [];
+        isLoading = false;
+      });
       return;
     }
-    setState(() { isLoading = true; });
-    final results = await DatabaseHelper.instance.searchWords(cleanKeyword);
+    setState(() {
+      isLoading = true;
+    });
+    final results = await DatabaseHelper.instance.searchWords(keyword);
     if (currentSearch != _searchId) return;
     if (!mounted) return;
-    setState(() { searchResult = results; isLoading = false; });
+    setState(() {
+      searchResult = results;
+      isLoading = false;
+    });
+  }
+
+  void _triggerQuickSearch(String keyword) {
+    searchController.text = keyword;
+    searchWord(keyword);
   }
 
   @override
@@ -124,14 +120,20 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Row(
                   children: [
-                    IconButton(onPressed: () => AppDrawer.open(context), icon: Icon(Icons.menu, color: textColor)),
+                    IconButton(
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                      icon: Icon(Icons.menu, color: textColor),
+                    ),
                     Expanded(
                       child: SearchBarWidget(
                         controller: searchController,
                         onSubmitted: searchWord,
                         onChanged: (val) {
                           _debounce?.cancel();
-                          _debounce = Timer(const Duration(milliseconds: 300), () => searchWord(val));
+                          _debounce = Timer(
+                            const Duration(milliseconds: 300),
+                            () => searchWord(val),
+                          );
                         },
                       ),
                     ),
@@ -152,47 +154,176 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeSections(bool isMyanmar, Color textColor, Color subTextColor, Color accentColor, Color cardBg) {
-    final Color mutedBottomColor = subTextColor.withValues(alpha: 0.65);
-
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (historyWords.isNotEmpty) ...[
-            _buildSectionHeader("🔥 Quick Search", () => setState(() => _showAllHistory = !_showAllHistory), _showAllHistory, historyWords.length),
-            _buildHorizontalList(historyWords, cardBg, textColor, subTextColor),
+            Text(
+              "⚡ Quick Search",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8.0,
+              children: historyWords
+                  .take(5)
+                  .map((w) => ActionChip(
+                        label: Text(w.chinese),
+                        onPressed: () => _triggerQuickSearch(w.chinese),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (favoriteWords.isNotEmpty) ...[
+            Text(
+              "⭐ Popular Words",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8.0,
+              children: favoriteWords
+                  .take(5)
+                  .map((w) => ActionChip(
+                        label: Text(w.chinese),
+                        onPressed: () => _triggerQuickSearch(w.chinese),
+                      ))
+                  .toList(),
+            ),
             const SizedBox(height: 20),
           ],
+          _buildCategorySection(isMyanmar, textColor, accentColor, cardBg),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
 
-          if (chineseOfTheDay != null) ...[
-            const Text("📅 Chinese of the Day", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 160,
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: InkWell(
-                  onTap: () => _navigateToDetail(chineseOfTheDay!),
+  Widget _buildCategorySection(bool isMyanmar, Color textColor, Color accentColor, Color cardBg) {
+    final displayCategories = appCategories.take(4).toList();
+    final List<Color> defaultColors = [
+      Colors.orange,
+      Colors.blue,
+      Colors.green,
+      Colors.purple,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              isMyanmar ? "အမျိုးအစားများ" : "Categories",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AllCategoriesScreen()),
+                );
+              },
+              child: Text(
+                isMyanmar ? "အားလုံးကြည့်ရန်" : "View All",
+                style: TextStyle(color: accentColor, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: displayCategories.length,
+          itemBuilder: (context, index) {
+            final cat = displayCategories[index];
+            final color = defaultColors[index % defaultColors.length];
+
+            return Card(
+              color: cardBg,
+              margin: const EdgeInsets.only(bottom: 14),
+              elevation: 3,
+              clipBehavior: Clip.antiAlias, // ပုံ ကတ်အစွန်းထွက်မသွားစေရန်
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => CategoryDetailScreen(category: cat)),
+                  );
+                },
+                child: SizedBox(
+                  height: 120, // ကတ်၏ အမြင့်
                   child: Stack(
                     children: [
-                      Positioned.fill(child: Image.asset('assets/images/card_photo.png', fit: BoxFit.cover)),
-                      Container(color: Colors.black.withValues(alpha: 0.5)),
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      // 🌟 ၁။ နောက်ခံ ပုံ (Full Image Background)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.4), // ပုံ မထည့်မီ ပြသမည့် အရောင်
+                            /* နောက်ပိုင်း ပုံထည့်ပါက အောက်ပါ လိုင်း ၃ လိုင်းကို un-comment လုပ်ပါ:
+                            image: DecorationImage(
+                              image: AssetImage('assets/images/${cat.titleEn.toLowerCase()}.png'),
+                              fit: BoxFit.cover,
+                            ),
+                            */
+                          ),
+                        ),
+                      ),
+
+                      // 🌟 ၂။ စာသား ထင်ရှားစေရန် Gradient အုပ်ပေးခြင်း
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.75), // စာသားအောက်တွင် အမည်းရောင်သန်းစေရန်
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 🌟 ၃။ ပုံပေါ်တွင် စာသား ထည့်သွင်းခြင်း
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        right: 16,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(chineseOfTheDay!.chinese, style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)),
-                            const SizedBox(height: 8),
-                            Text(chineseOfTheDay!.pinyin, style: const TextStyle(fontSize: 16, color: Colors.white70)),
-                            const SizedBox(height: 6),
-                            Text(
-                              isMyanmar 
-                                  ? ((chineseOfTheDay!.myanmar != null && chineseOfTheDay!.myanmar!.trim().isNotEmpty) ? chineseOfTheDay!.myanmar! : chineseOfTheDay!.english)
-                                  : chineseOfTheDay!.english, 
-                              style: const TextStyle(fontSize: 16, color: Colors.white),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isMyanmar ? cat.titleMy : cat.titleEn,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white, // ပုံပေါ် ရောက်မည်ဖြစ်၍ စာသားကို အဖြူရောင်ထားပါသည်
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${cat.words.length} ${isMyanmar ? 'လုံး' : 'words'}",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 18,
+                              color: Colors.white,
                             ),
                           ],
                         ),
@@ -201,176 +332,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-          ],
-
-          if (favoriteWords.isNotEmpty) ...[
-            _buildSectionHeader("⭐ Popular Words", () => setState(() => _showAllFavorites = !_showAllFavorites), _showAllFavorites, favoriteWords.length),
-            _buildHorizontalList(favoriteWords, cardBg, textColor, subTextColor),
-            const SizedBox(height: 20),
-          ],
-          
-          const SizedBox(height: 42),
-          Center(
-            child: Column(
-              children: [
-                Icon(
-                  Icons.menu_book_rounded, 
-                  size: 53, 
-                  color: mutedBottomColor,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  isMyanmar ? "တရုတ် - မြန်မာ\nအဘိဓာန်" : "Chinese - Myanmar\nDictionary", 
-                  textAlign: TextAlign.center, 
-                  style: TextStyle(
-                    fontSize: 20 * settingsController.fontSizeScale, 
-                    fontWeight: FontWeight.w500, 
-                    color: mutedBottomColor,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHorizontalList(List<Word> items, Color cardBg, Color textColor, Color subTextColor) {
-    bool isHistoryList = items == historyWords;
-    bool showAll = isHistoryList ? _showAllHistory : _showAllFavorites;
-    
-    return SizedBox(
-      height: 70,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: showAll ? items.length : (items.length > 5 ? 5 : items.length),
-        itemBuilder: (context, index) {
-          return _buildWordChip(items[index], cardBg, textColor, subTextColor);
-        },
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, VoidCallback onTap, bool isExpanded, int length) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        if (length > 5)
-          TextButton(onPressed: onTap, child: Text(isExpanded ? "Show Less" : "See More")),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildWordChip(Word word, Color cardBg, Color textColor, Color subTextColor) {
-    return Container(
-      margin: const EdgeInsets.only(right: 10),
-      width: 100,
-      child: Card(
-        color: cardBg,
-        child: InkWell(
-          onTap: () => _navigateToDetail(word),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(word.chinese, style: TextStyle(fontWeight: FontWeight.bold, color: textColor)), 
-                Text(word.pinyin, style: TextStyle(fontSize: 12, color: subTextColor)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Search Result ကို Card ပုံစံဖြင့် ပြသပေးသော Widget
   Widget _buildSearchResults(bool isDark, bool isMyanmar, Color textColor, Color subTextColor, Color accentColor, Color cardBg) {
     if (isLoading) return const Center(child: CircularProgressIndicator());
-    
-    if (searchResult.isEmpty) {
-      return Center(
-        child: Text(
-          isMyanmar ? "ရှာဖွေမှု ရလဒ် မရှိပါ" : "No results found",
-          style: TextStyle(color: subTextColor, fontSize: 16 * settingsController.fontSizeScale),
-        ),
-      );
-    }
-
-    final Color borderColor = isDark ? const Color(0xFF3D2314) : const Color(0xFFE6D5C3);
+    if (searchResult.isEmpty) return Center(child: Text(isMyanmar ? "ရှာဖွေမှု ရလဒ် မရှိပါ" : "No results found"));
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
       itemCount: searchResult.length,
       itemBuilder: (context, index) {
         final word = searchResult[index];
-        final String meaning = isMyanmar 
-            ? ((word.myanmar != null && word.myanmar!.trim().isNotEmpty) ? word.myanmar! : word.english) 
-            : word.english;
-
         return Card(
           color: cardBg,
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 10.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            side: BorderSide(color: borderColor, width: 1),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12.0),
+          margin: const EdgeInsets.only(bottom: 10),
+          child: ListTile(
             onTap: () => _navigateToDetail(word),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          word.chinese,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 22 * settingsController.fontSizeScale,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (word.pinyin.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            word.pinyin,
-                            style: TextStyle(
-                              color: accentColor,
-                              fontSize: 14 * settingsController.fontSizeScale,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 6),
-                        Text(
-                          meaning,
-                          style: TextStyle(
-                            color: textColor,
-                            fontSize: 16 * settingsController.fontSizeScale,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: subTextColor,
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
+            title: Text(word.chinese, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(isMyanmar ? (word.myanmar ?? word.english) : word.english),
           ),
         );
       },
@@ -378,6 +361,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToDetail(Word word) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => WordDetailScreen(word: word, searchText: searchController.text))).then((_) => _loadHomeData());
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WordDetailScreen(word: word, searchText: searchController.text),
+      ),
+    ).then((_) => _loadHomeData());
   }
 }

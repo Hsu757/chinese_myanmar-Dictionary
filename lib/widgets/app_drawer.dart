@@ -13,9 +13,9 @@ class AppDrawer extends StatefulWidget {
       PageRouteBuilder(
         opaque: false,
         barrierDismissible: true,
-        barrierColor: Colors.black.withValues(alpha: 0.5),
-        transitionDuration: const Duration(milliseconds: 12000), // မူလ Duration အတိုင်း
-        reverseTransitionDuration: const Duration(milliseconds: 9000),
+        barrierColor: Colors.black.withValues(alpha: 0.7),
+        transitionDuration: const Duration(milliseconds: 400), // မူလ Duration အတိုင်း
+        reverseTransitionDuration: const Duration(milliseconds: 250),
         pageBuilder: (context, animation, secondaryAnimation) {
           return Align(
             alignment: Alignment.centerLeft,

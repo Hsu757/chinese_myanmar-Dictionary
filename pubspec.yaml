@@ -38,6 +38,8 @@ dependencies:
   path: ^1.9.0
   cupertino_icons: ^1.0.8
   flutter_tts: ^4.2.5
+  webview_flutter: ^4.10.0
+  flutter_native_splash: ^2.4.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -48,13 +50,28 @@ dev_dependencies:
     sdk: flutter
   build_runner: ^2.4.9
   drift_dev: ^2.16.0
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_native_splash:
+  color: "#1A1009"
+  image: "assets/images/App_logo.png"
+  android_12:
+    color: "#1A1009"
+    image: "assets/images/App_logo.png"
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/App_logo.png" # သင့် Logo ပုံ လမ်းကြောင်း
+  min_sdk_android: 21
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^6.0.0
+  
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

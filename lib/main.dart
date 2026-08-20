@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
-import 'database_helper.dart'; 
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'database_helper.dart'; // 🌟 Database helper ကို ပြန် import လုပ်ထားပါသည်
 import 'settings_controller.dart';
-import 'screens/home_screen.dart';
+import 'screens/home_screen.dart'; // 🌟 HomeScreen ကို ပြန် import လုပ်ထားပါသည် (folder နာမည် screen သို့မဟုတ် screens စစ်ပေးပါ)
 
 final SettingsController settingsController = SettingsController();
 
 void main() async {
-  // Database အလုပ်လုပ်ဖို့အတွက် အဓိက လိုအပ်တဲ့ အပိုင်း
-  WidgetsFlutterBinding.ensureInitialized(); 
+  // 1. Flutter Binding ကို စတင်ပါ
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized(); 
   
-  // // 1. Database ကို စတင် Initialize လုပ်ပါ
-  // await DatabaseHelper.instance.initDatabase();
+  // 2. Native Splash Screen ကို အရင်ဆုံး ထိန်းထားပါမည် (Logo လေးနှင့် Splash Screen ပေါ်နေမည်)
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   
-  // 2. CSV ထဲက Data တွေကို Database ထဲ သွင်းပါ
+  // 3. Database ကို Splash Screen ပေါ်နေစဉ် နောက်ကွယ်တွင် သွင်းပါမည်
   await DatabaseHelper.instance.importCsvToDatabase();
+  
+  // 4. Database သွင်းပြီးသွားပါက Native Splash ကို ဖျောက်လိုက်ပါမည်
+  FlutterNativeSplash.remove();
   
   runApp(const MyApp());
 }
@@ -69,7 +73,7 @@ class _MyAppState extends State<MyApp> {
           child: child!,
         );
       },
-      home: const HomeScreen(),
+      home: const HomeScreen(), // 🌟 SplashScreen အစား HomeScreen ကို တိုက်ရိုက်ခေါ်ပေးထားပါသည်
     );
   }
 }

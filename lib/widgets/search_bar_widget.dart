@@ -28,9 +28,22 @@ class SearchBarWidget extends StatelessWidget {
         onChanged: onChanged,
         style: TextStyle(color: isDark ? const Color(0xFFFDFBF7) : const Color(0xFF2C1A0E)),
         decoration: InputDecoration(
-          hintText: "Search Chinese, Pinyin, Myanmar, English...",
+          hintText: "Chinese, Pinyin,Myanmar,English...",
           hintStyle: TextStyle(color: isDark ? const Color(0xFFC7B299) : const Color(0xFF8D6E63)),
-          prefixIcon: Icon(Icons.search, color: isDark ? const Color(0xFFD4A373) : const Color(0xFF6F4E37)),
+          
+          // 🌟 Search Icon နဲ့ စာသားကြား အကွာအဝေးကို ကပ်ပေးလိုက်သည့် အပိုင်း
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 30, 
+            minHeight: 48,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.only(left: 12, right: 6),
+            child: Icon(
+              Icons.search, 
+              color: isDark ? const Color(0xFFD4A373) : const Color(0xFF6F4E37),
+            ),
+          ),
+          
           suffixIcon: controller.text.isNotEmpty
               ? IconButton(
                   icon: Icon(Icons.clear, color: isDark ? const Color(0xFFC7B299) : const Color(0xFF8D6E63)),
