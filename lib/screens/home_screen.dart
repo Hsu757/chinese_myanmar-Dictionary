@@ -303,6 +303,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
+                                        cat.emoji, // 👈 Data ဖိုင်ထဲက emoji ကို ဒီမှာ ပြန်ခေါ်သုံးလိုက်တာပါ
+                                        style: TextStyle(fontSize: 24),
+                                ),
+                                      const SizedBox(height: 8),
+                                Text(
                                   isMyanmar ? cat.titleMy : cat.titleEn,
                                   style: const TextStyle(
                                     fontSize: 20,
@@ -310,14 +315,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                     color: Colors.white, // ပုံပေါ် ရောက်မည်ဖြစ်၍ စာသားကို အဖြူရောင်ထားပါသည်
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "${cat.words.length} ${isMyanmar ? 'လုံး' : 'words'}",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                  ),
-                                ),
+                                // const SizedBox(height: 4),
+                                // Text(
+                                //   "${cat.words.length} ${isMyanmar ? 'လုံး' : 'words'}",
+                                //   style: TextStyle(
+                                //     fontSize: 13,
+                                //     color: Colors.white.withValues(alpha: 0.8),
+                                //   ),
+                                // ),
                               ],
                             ),
                             const Icon(

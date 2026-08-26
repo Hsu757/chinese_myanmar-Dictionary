@@ -122,6 +122,11 @@ class AllCategoriesScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
+                                        cat.emoji, // 👈 Data ဖိုင်ထဲက emoji ကို ဒီမှာ ပြန်ခေါ်သုံးလိုက်တာပါ
+                                        style: TextStyle(fontSize: 24 * scale),
+                                      ),
+                                      const SizedBox(height: 8),
+                                  Text(
                                     isEnglish ? cat.titleEn : cat.titleMy,
                                     style: TextStyle(
                                       fontSize: 18 * scale,
@@ -129,14 +134,14 @@ class AllCategoriesScreen extends StatelessWidget {
                                       color: Colors.white,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "${cat.words.length} ${isEnglish ? 'words' : 'လုံး'}",
-                                    style: TextStyle(
-                                      fontSize: 12 * scale,
-                                      color: Colors.white.withValues(alpha: 0.8),
-                                    ),
-                                  ),
+                                  // const SizedBox(height: 4),
+                                  // Text(
+                                  //   "${cat.words.length} ${isEnglish ? 'words' : 'လုံး'}",
+                                  //   style: TextStyle(
+                                  //     fontSize: 12 * scale,
+                                  //     color: Colors.white.withValues(alpha: 0.8),
+                                  //   ),
+                                  // ),
                                 ],
                               ),
                               const Icon(

@@ -87,6 +87,7 @@ flutter:
     - assets/hsk_01.csv 
     - assets/images/bg_photo.png
     - assets/images/card_photo.png
+    
 
   # To add assets to your application, add an assets section, like this:
   # assets:
